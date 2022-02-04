@@ -1,5 +1,6 @@
 # don't forget to leave a star <3 https://github.com/hoemotion/Disocrd-Mass-Dm
 import os, sys, time, random, asyncio, json, logging, base64; from datetime import datetime
+from yarl import URL
 from lib.scraper import Scraper
 try:
     import psutil; from aiohttp import ClientSession; from tasksio import TaskPool
@@ -53,7 +54,7 @@ class Discord(object):
                     sys.exit()
                 for tkn in tkns:
                     self.tokens.append(tkn)
-        except Exception:
+        except Exception as e:
             logging.info(f"{self.err} Please insert your tokens correctly in {self.opbracket}tokens.json{self.closebrckt}")
             sys.exit()
         try:
@@ -113,11 +114,13 @@ class Discord(object):
         self.embed = embds
         try:
             self.delay = float(input(f"{self.question}Delay{self.arrow}"))
-        except Exception:
+        except Exception as e:
+            print(f"Encountered exception! {e}")
             self.delay = 0
         try:
             self.ratelimit_delay = float(input(f"{self.question}Rate limit Delay{self.arrow}"))
-        except Exception:
+        except Exception as e:
+            print(f"Encountered exception! {e}")
             self.ratelimit_delay = 300
 
         print()
@@ -182,8 +185,9 @@ class Discord(object):
     async def login(self, token: str, proxy: str):
         try:
             headers = await self.headers(token)
+            proxy_url = None if proxy is None else URL(proxy)
             async with ClientSession(headers=headers) as mass_dm_brrr:
-                async with mass_dm_brrr.get("https://discord.com/api/v9/users/@me/library", proxy=proxy) as response:
+                async with mass_dm_brrr.get("https://discord.com/api/v9/users/@me/library", proxy=proxy_url) as response:
                     try:
                         json = await response.json()
                         jsoncode = json["code"]
@@ -203,14 +207,16 @@ class Discord(object):
                         logging.info(f"{self.err}Rate limited {code}{self.opbracket}%s{self.closebrckt}" % (token[:59]))
                         time.sleep(self.ratelimit_delay)
                         await self.login(token, proxy)
-        except Exception:
+        except Exception as e:
+            print(f"Encountered exception! {e}")
             await self.login(token, proxy)
 
     async def join(self, token: str, proxy: str):
         try:
             headers = await self.headers(token)
             async with ClientSession(headers=headers) as hoemotion:
-                async with hoemotion.post("https://discord.com/api/v9/invites/%s" % (self.invite), json={}, proxy=proxy) as response:
+                proxy_url = None if proxy is None else URL(proxy)
+                async with hoemotion.post("https://discord.com/api/v9/invites/%s" % (self.invite), json={}, proxy=proxy_url) as response:
                     json = await response.json()
                     if response.status == 200:
                         self.guild_name = json["guild"]["name"]
@@ -233,15 +239,17 @@ class Discord(object):
                         self.stop()
                     else:
                         self.tokens.remove(token)
-        except Exception:
+        except Exception as e:
+            print(f"Encountered exception! {e}")
             await self.join(token, proxy)
 
     async def create_dm(self, token: str, user: str, proxy: str):
         try:
             headers = await self.headers(token)
+            proxy_url = None if proxy is None else URL(proxy)
             async with ClientSession(headers=headers) as chupapi_munanyo:
                 async with chupapi_munanyo.post("https://discord.com/api/v9/users/@me/channels",
-                                                json={"recipients": [user]}, proxy=proxy) as response:
+                                                json={"recipients": [user]}, proxy=proxy_url) as response:
                     json = await response.json()
                     if response.status == 200:
                         logging.info(
@@ -269,7 +277,8 @@ class Discord(object):
                             f"{self.err}User doesn\'t exist! {self.opbracket}%s{self.closebrckt}" % (token[:59]))
                     else:
                         return False
-        except Exception:
+        except Exception as e:
+            print(f"Encountered exception! {e}")
             return await self.create_dm(token, user, proxy)
 
     async def direct_message(self, token: str, channel: str, user, proxy: str):
@@ -277,9 +286,10 @@ class Discord(object):
         message = self.get_user_in_message(user)
         headers = await self.headers(token)
         async with ClientSession(headers=headers) as virgin:
+            proxy_url = None if proxy is None else URL(proxy)
             async with virgin.post("https://discord.com/api/v9/channels/%s/messages" % (channel),
                                    json={"content": message, "embeds": embed, "nonce": self.nonce(),
-                                         "tts": False}, proxy=proxy) as response:
+                                         "tts": False}, proxy=proxy_url) as response:
                 json = await response.json()
                 if response.status == 200:
                     logging.info(f"{self.success}Successfully sent message {self.opbracket}%s{self.red}){self.rst}" % (
@@ -334,8 +344,9 @@ class Discord(object):
         try:
             headers = await self.headers(token)
             async with ClientSession(headers=headers) as client:
+                proxy_url = None if proxy is None else URL(proxy)
                 async with client.delete(f"https://discord.com/api/v9/users/@me/guilds/{self.guild_id}",
-                                         json={"lurking": False}, proxy=proxy) as response:
+                                         json={"lurking": False}, proxy=proxy_url) as response:
                     json = await response.json()
                     message = json["message"]
                     code = json["code"]
@@ -364,7 +375,8 @@ class Discord(object):
                             f"{self.err}{response.status} | {message} | {code} | {self.opbracket}%s{self.closebrckt}" % (
                             token[:59]))
 
-        except Exception:
+        except Exception as e:
+            print(f"Encountered exception! {e}")
             await self.leave(token, proxy)
 
     async def start(self):
@@ -376,7 +388,7 @@ class Discord(object):
             for token in self.tokens:
                 if len(self.tokens) != 0:
                     if self.use_proxies:
-                        proxy = "%s://%s" % (self.proxy_type, random.choice(self.proxies))
+                        proxy = random.choice(self.proxies)
                     else:
                         proxy = None
                     await pool.put(self.login(token, proxy))
@@ -393,7 +405,7 @@ class Discord(object):
             for token in self.tokens:
                 if len(self.tokens) != 0:
                     if self.use_proxies:
-                        proxy = "%s://%s" % (self.proxy_type, random.choice(self.proxies))
+                        proxy = random.choice(self.proxies)
                     else:
                         proxy = None
                     await pool.put(self.join(token, proxy))
@@ -422,7 +434,7 @@ class Discord(object):
                 if len(self.tokens) != 0:
                     if str(user) not in self.blacklisted_users:
                         if self.use_proxies:
-                            proxy = "%s://%s" % (self.proxy_type, random.choice(self.proxies))
+                            proxy =  random.choice(self.proxies)
                         else:
                             proxy = None
                         await pool.put(self.send(random.choice(self.tokens), user, proxy))
@@ -440,7 +452,7 @@ class Discord(object):
                 if len(self.tokens) != 0:
                     for token in self.tokens:
                         if self.use_proxies:
-                            proxy = "%s://%s" % (self.proxy_type, random.choice(self.proxies))
+                            proxy = random.choice(self.proxies)
                         else:
                             proxy = None
                         await pool.put(self.leave(token, proxy))
