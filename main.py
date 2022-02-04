@@ -415,6 +415,7 @@ class Discord(object):
 
         if len(self.tokens) == 0: self.stop()
 
+        print("Choosing not to die!")
         scraper = Scraper(
             token=self.tokens[0],
             guild_id=self.guild_id,
